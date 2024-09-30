@@ -1,0 +1,129 @@
+name: build
+on:
+  workflow_call: {}
+
+env:
+  IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
+  IMAGE_NAME: ${{ env.IMAGE_NAME }}
+  FEDORA_VERSION: ${{ env.FEDORA_VERSION }}
+
+jobs:
+  build_custom:
+    name: Build Silverblue
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set Variables
+        shell: bash
+        run: |
+          echo "SOURCE_IMAGE=silverblue" >> $GITHUB_ENV
+          echo "SOURCE_ORG=fedora-ostree-desktops" >> $GITHUB_ENV
+          echo "IMAGE_NAME=${{ env.IMAGE_NAME }}-${{ env.FEDORA_VERSION }}" >> $GITHUB_ENV
+          echo "IMAGE_REGISTRY=ghcr.io/${{ github.repository_owner }}" >> $GITHUB_ENV
+          echo "FEDORA_VERSION=${{ env.FEDORA_VERSION }}" >> $GITHUB_ENV
+      - name: Generate tags
+        id: generate-tags
+        shell: bash
+        run: |
+          TIMESTAMP="$(date +%Y%m%d)"
+          BUILD_TAGS=("latest")
+
+          # Add timestamp tag for version history
+          BUILD_TAGS+=("${TIMESTAMP}")
+
+          echo "Generated the following tags: "
+          for TAG in "${BUILD_TAGS[@]}"; do
+              echo "${TAG}"
+          done
+
+          echo "alias_tags=${BUILD_TAGS[*]}" >> $GITHUB_OUTPUT
+          echo "DEFAULT_TAG=latest" >> $GITHUB_ENV
+
+      - name: Get current version
+        id: labels
+        uses: Wandalen/wretry.action@v3.5.0
+        with:
+          attempt_limit: 3
+          attempt_delay: 15000
+          command: |
+            set -eo pipefail
+            ver=$(skopeo inspect docker://quay.io/${{ env.SOURCE_ORG }}/${{ env.SOURCE_IMAGE }}:${{ env.FEDORA_VERSION }} | jq -r '.Labels["org.opencontainers.image.version"]')
+            if [ -z "$ver" ] || [ "null" = "$ver" ]; then
+              echo "inspected image version must not be empty or null"
+              exit 1
+            fi
+            echo "SOURCE_IMAGE_VERSION=$ver" >> $GITHUB_ENV
+
+      - name: Image Metadata
+        uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
+          labels: |
+            org.opencontainers.image.title=${{ env.IMAGE_NAME }}
+            org.opencontainers.image.version=${{ env.SOURCE_IMAGE_VERSION }}
+            org.opencontainers.image.description=Custom silverblue image.
+            ostree.linux=${{ env.KERNEL_VERSION }}
+            io.artifacthub.package.readme-url=https://raw.githubusercontent.com/sylvain-sonnen/sonnen-os/main/README.md
+            io.artifacthub.package.logo-url=https://avatars.githubusercontent.com/u/158456949?v=4
+
+      - name: Build Image
+        id: build_image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          containerfiles: ./Containerfile
+          image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: ${{ steps.generate-tags.outputs.alias_tags }}
+          build-args: |
+            IMAGE_NAME=silverblue
+            SOURCE_ORG=${{ env.SOURCE_ORG }}
+            SOURCE_IMAGE=${{ env.SOURCE_IMAGE }}
+          labels: ${{ steps.meta.outputs.labels }}
+          oci: false
+
+      - name: Push to GHCR
+        uses: Wandalen/wretry.action@v3.5.0
+        id: push
+        env:
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ github.token }}
+        with:
+          action: redhat-actions/push-to-registry@v2
+          attempt_limit: 3
+          attempt_delay: 15000
+          with: |
+            image: ${{ steps.build_image.outputs.image }}
+            tags: ${{ steps.build_image.outputs.tags }}
+            registry: ghcr.io
+            username: ${{ github.actor }}
+            password: ${{ secrets.GITHUB_TOKEN }}
+            extra-args: |
+              --disable-content-trust
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: sigstore/cosign-installer@v3.5.0
+
+      - name: Sign container image
+        run: |
+          cosign sign -y --key env://COSIGN_PRIVATE_KEY ${{ steps.build_image.outputs.image }}@${TAGS}
+        env:
+          TAGS: ${{ steps.push.outputs.outputs && fromJSON(steps.push.outputs.outputs).digest }}
+          COSIGN_EXPERIMENTAL: false
+          COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
+
+      - name: Echo outputs
+        run: |
+          echo "${{ toJSON(steps.push.outputs) }}"

@@ -1,0 +1,17 @@
+name: silverblue main 40
+on:
+  pull_request:
+  merge_group:
+  schedule:
+    - cron: "5 3 * * *" # 3am-ish UTC everyday (timed against official fedora container pushes)
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: sonnen-os
+  FEDORA_VERSION: 40
+
+jobs:
+  build:
+    name: build
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
