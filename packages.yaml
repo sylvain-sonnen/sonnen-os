@@ -55,8 +55,8 @@ include:
   gnome:
     - gnome-shell-extension-pop-shell
     - gnome-tweaks
-  cosmic:
-    - cosmic-desktop
+  # cosmic:
+  #   - cosmic-desktop
 exclude:
   global:
     - ffmpeg-free
