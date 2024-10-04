@@ -10,7 +10,7 @@ To rebase an existing atomic Fedora installation to the latest build:
 - First rebase to the unsigned image, to get the proper signing keys and policies installed:
 
   ```
-  rpm-ostree rebase ostree-unverified-registry:ghcr.io/sylvain-sonnen/sonnen-os:latest
+  rpm-ostree rebase ostree-unverified-registry:ghcr.io/sylvain-sonnen/sonnen-os-40:latest
   ```
 
 - Reboot to complete the rebase:
@@ -22,7 +22,7 @@ To rebase an existing atomic Fedora installation to the latest build:
 - Then rebase to the signed image, like so:
 
   ```
-  rpm-ostree rebase ostree-image-signed:docker://ghcr.io/sylvain-sonnen/sonnen-os:latest
+  rpm-ostree rebase ostree-image-signed:docker://ghcr.io/sylvain-sonnen/sonnen-os-40:latest
   ```
 
 - Reboot again to complete the installation
@@ -42,5 +42,5 @@ todo
 These images are signed with [Sigstore](https://www.sigstore.dev/)'s [cosign](https://github.com/sigstore/cosign). You can verify the signature by downloading the `cosign.pub` file from this repo and running the following command:
 
 ```bash
-cosign verify --key cosign.pub ghcr.io/sylvain-sonnen/sonnen-os
+cosign verify --key cosign.pub ghcr.io/sylvain-sonnen/sonnen-os-40
 ```
