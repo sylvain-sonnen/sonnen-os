@@ -16,16 +16,16 @@ mkdir -p /tmp/rpms
 # curl -Lo /etc/yum.repos.d/_copr_ryanabx-cosmic.repo \
 #   https://copr.fedorainfracloud.org/coprs/ryanabx/cosmic-epoch/repo/fedora-"${RELEASE}"/ryanabx-cosmic-epoch-fedora-"${RELEASE}".repo
 
+# TODO: automate fetching latest
+curl -Lo /tmp/rpms/chezmoi-2.52.4-x86_64.rpm https://github.com/twpayne/chezmoi/releases/download/v2.52.4/chezmoi-2.52.4-x86_64.rpm
+
 cp /ctx/files/usr/etc/yum.repos.d/docker-ce.repo /etc/yum.repos.d/docker-ce.repo
 cp /ctx/files/usr/etc/yum.repos.d/tailscale.repo /etc/yum.repos.d/tailscale.repo
 
 rpm-ostree install \
+  /tmp/rpms/*.rpm \
   /tmp/rpm-repos/*.rpm \
   fedora-repos-archive
-#rpm-ostree install \
-#  /tmp/rpms/*.rpm \
-#  /tmp/rpm-repos/*.rpm \
-#  fedora-repos-archive
 
 wget --no-hsts https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
 chmod +x /usr/bin/yq
