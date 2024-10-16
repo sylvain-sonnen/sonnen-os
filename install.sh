@@ -19,12 +19,13 @@ mkdir -p /tmp/rpms
 cp /ctx/files/usr/etc/yum.repos.d/docker-ce.repo /etc/yum.repos.d/docker-ce.repo
 cp /ctx/files/usr/etc/yum.repos.d/tailscale.repo /etc/yum.repos.d/tailscale.repo
 
-ls /tmp/rpm-repos
-
 rpm-ostree install \
-#  /tmp/rpms/*.rpm \
   /tmp/rpm-repos/*.rpm \
   fedora-repos-archive
+#rpm-ostree install \
+#  /tmp/rpms/*.rpm \
+#  /tmp/rpm-repos/*.rpm \
+#  fedora-repos-archive
 
 wget --no-hsts https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
 chmod +x /usr/bin/yq
