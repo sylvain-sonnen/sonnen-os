@@ -7,6 +7,7 @@ include:
     - ffmpeg-libs
     - ffmpegthumbnailer
     - flatpak-spawn
+    - flameshot
     - fzf
     - grub2-tools-extra
     - gvfs-nfs
